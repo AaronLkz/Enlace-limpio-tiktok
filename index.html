@@ -1,33 +1,74 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Enlace limpio TikTok</title>
+  <title>Limpiar enlace TikTok</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2em;
+      background: #f3f3f3;
+      text-align: center;
+    }
+    input, button {
+      padding: 0.5em;
+      font-size: 1em;
+      margin: 1em;
+      width: 90%;
+      max-width: 500px;
+    }
+    #output {
+      margin-top: 1em;
+      word-break: break-all;
+      background: #fff;
+      padding: 1em;
+      border-radius: 8px;
+      box-shadow: 0 0 10px #ccc;
+    }
+  </style>
 </head>
 <body>
-  <h2>Procesando enlace…</h2>
+  <h2>Limpiar enlaces de TikTok</h2>
+  <input type="text" id="inputLink" placeholder="Pega aquí tu enlace de TikTok">
+  <br>
+  <button onclick="limpiar()">Limpiar enlace</button>
+  <div id="output"></div>
 
   <script>
-    const params = new URLSearchParams(window.location.search);
-    const original = params.get("url");
+    async function limpiar() {
+      const url = document.getElementById('inputLink').value.trim();
+      if (!url.includes("tiktok.com")) {
+        document.getElementById('output').innerText = "No parece un enlace de TikTok válido.";
+        return;
+      }
 
-    if (!original) {
-      document.body.innerHTML = "<h3>Error: No se encontró ningún enlace.</h3>";
-    } else {
-      // Redirige al enlace pero con el truco del modo escritorio y sin popup
-      if (original.includes("vm.tiktok.com")) {
-        // TikTok hace redirección automáticamente al abrir el vm.tiktok.com
-        window.location.href = original;
-      } else if (original.includes("tiktok.com")) {
-        // Quitar parámetros que fuerzan login
-        let cleanURL = original.split("?")[0];
-        // Forzar modo web para evitar abrir en app
-        if (!cleanURL.includes("www.tiktok.com")) {
-          cleanURL = cleanURL.replace("m.tiktok.com", "www.tiktok.com");
+      let finalUrl = url;
+
+      // Si es un enlace tipo "vm.tiktok.com", hay que resolver el redireccionamiento
+      if (url.includes("vm.tiktok.com")) {
+        try {
+          const response = await fetch(url, { method: "HEAD", redirect: "follow" });
+          finalUrl = response.url;
+        } catch (err) {
+          document.getElementById('output').innerText = "Error al procesar el enlace acortado.";
+          return;
         }
-        window.location.href = cleanURL;
-      } else {
-        document.body.innerHTML = "<h3>Enlace no válido de TikTok.</h3>";
+      }
+
+      // Limpiar parámetros de seguimiento
+      const cleanLink = finalUrl.split("?")[0];
+
+      // Mostrar y copiar
+      document.getElementById('output').innerHTML = `
+        <strong>Enlace limpio:</strong><br>
+        <a href="${cleanLink}" target="_blank">${cleanLink}</a>
+      `;
+
+      // Copiar automáticamente al portapapeles
+      try {
+        await navigator.clipboard.writeText(cleanLink);
+      } catch (e) {
+        console.log("No se pudo copiar al portapapeles.");
       }
     }
   </script>
