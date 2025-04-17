@@ -2,20 +2,33 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Redirigiendo…</title>
+  <title>Enlace limpio TikTok</title>
 </head>
 <body>
-  <h2>Procesando enlace de TikTok…</h2>
-  <script>
-    // Obtener el parámetro de la URL ?url=
-    const params = new URLSearchParams(window.location.search);
-    const enlace = params.get("url");
+  <h2>Procesando enlace…</h2>
 
-    // Validar que sea de TikTok
-    if (enlace && (enlace.includes("tiktok.com"))) {
-      window.location.href = enlace;
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const original = params.get("url");
+
+    if (!original) {
+      document.body.innerHTML = "<h3>Error: No se encontró ningún enlace.</h3>";
     } else {
-      document.body.innerHTML = "<h3>Error: Enlace no válido de TikTok.</h3>";
+      // Redirige al enlace pero con el truco del modo escritorio y sin popup
+      if (original.includes("vm.tiktok.com")) {
+        // TikTok hace redirección automáticamente al abrir el vm.tiktok.com
+        window.location.href = original;
+      } else if (original.includes("tiktok.com")) {
+        // Quitar parámetros que fuerzan login
+        let cleanURL = original.split("?")[0];
+        // Forzar modo web para evitar abrir en app
+        if (!cleanURL.includes("www.tiktok.com")) {
+          cleanURL = cleanURL.replace("m.tiktok.com", "www.tiktok.com");
+        }
+        window.location.href = cleanURL;
+      } else {
+        document.body.innerHTML = "<h3>Enlace no válido de TikTok.</h3>";
+      }
     }
   </script>
 </body>
