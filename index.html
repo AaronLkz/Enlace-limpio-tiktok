@@ -39,24 +39,6 @@
   <div id="copiar" class="copiar" style="display: none;" onclick="copiarEnlace()">Copiar enlace</div>
 
   <script>
-    function extraerVideoId(url) {
-      // Para enlaces como vm.tiktok.com/ZMBpuq6x9/
-      if (url.includes('vm.tiktok.com') || url.includes('vt.tiktok.com')) {
-        const partes = url.split('/');
-        const codigo = partes[partes.length - 1].replace('/', '');
-        return codigo;
-      }
-      
-      // Para enlaces como tiktok.com/@usuario/video/123456789
-      const regexVideoId = /video\/(\d+)/;
-      const match = url.match(regexVideoId);
-      if (match && match[1]) {
-        return match[1];
-      }
-      
-      return null;
-    }
-
     function limpiarEnlace() {
       const entrada = document.getElementById('inputLink').value.trim();
       const resultado = document.getElementById('resultado');
@@ -71,21 +53,42 @@
       }
 
       try {
-        const videoId = extraerVideoId(entrada);
-        
-        if (!videoId) {
-          resultado.textContent = 'No se pudo extraer el ID del video. Verifica que el enlace sea válido.';
+        // Para enlaces cortos (vm.tiktok.com/xxx)
+        if (entrada.includes('vm.tiktok.com') || entrada.includes('vt.tiktok.com')) {
+          const urlObj = new URL(entrada.startsWith('http') ? entrada : `https://${entrada}`);
+          const path = urlObj.pathname.split('/')[1]; // Extrae "ZMBpHSeFr" de "/ZMBpHSeFr/"
+          const enlaceLimpio = `https://www.tiktok.com/t/${path}/`;
+          mostrarResultado(enlaceLimpio);
           return;
         }
         
-        const enlaceLimpio = `https://www.tiktok.com/t/${videoId}/`;
-        resultado.innerHTML = `Enlace limpio: <a href="${enlaceLimpio}" target="_blank">${enlaceLimpio}</a>`;
-        copiarBtn.style.display = 'block';
-        copiarBtn.setAttribute('data-url', enlaceLimpio);
+        // Para enlaces largos (tiktok.com/@usuario/video/123)
+        if (entrada.includes('tiktok.com') && entrada.includes('/video/')) {
+          const urlObj = new URL(entrada);
+          const pathParts = urlObj.pathname.split('/');
+          const videoIndex = pathParts.indexOf('video');
+          if (videoIndex !== -1 && pathParts.length > videoIndex + 1) {
+            const videoId = pathParts[videoIndex + 1];
+            const enlaceLimpio = `https://www.tiktok.com/t/${videoId}/`;
+            mostrarResultado(enlaceLimpio);
+            return;
+          }
+        }
+        
+        resultado.textContent = 'Formato de enlace no reconocido. Usa enlaces como: vm.tiktok.com/xxx o tiktok.com/@usuario/video/123';
       } catch (error) {
-        resultado.textContent = 'Ocurrió un error. Intenta con otro enlace.';
+        resultado.textContent = 'Error al procesar el enlace. Verifica que sea válido.';
         console.error(error);
       }
+    }
+
+    function mostrarResultado(enlace) {
+      const resultado = document.getElementById('resultado');
+      const copiarBtn = document.getElementById('copiar');
+      
+      resultado.innerHTML = `Enlace limpio: <a href="${enlace}" target="_blank">${enlace}</a>`;
+      copiarBtn.style.display = 'block';
+      copiarBtn.setAttribute('data-url', enlace);
     }
 
     function copiarEnlace() {
