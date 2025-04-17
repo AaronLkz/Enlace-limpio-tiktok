@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Limpiador de Enlaces TikTok</title>
+  <title>Generador de Enlaces Anónimos para TikTok</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -10,7 +10,7 @@
       margin: 2rem auto;
       padding: 1rem;
     }
-    input, button {
+    input, button, select {
       width: 100%;
       padding: 0.75rem;
       margin-top: 1rem;
@@ -32,15 +32,22 @@
   </style>
 </head>
 <body>
-  <h2>Limpiador de Enlaces TikTok</h2>
+  <h2>Generador de Enlaces Anónimos</h2>
   <input type="text" id="inputLink" placeholder="Pega aquí el enlace de TikTok">
-  <button onclick="limpiarEnlace()">Limpiar enlace</button>
+  <select id="tipoEnlace">
+    <option value="vxtiktok">vxtiktok.com (Recomendado)</option>
+    <option value="snaptik">snaptik.app</option>
+    <option value="ddinstagram">ddinstagram.com</option>
+    <option value="original">tiktok.com/t/ (No anónimo)</option>
+  </select>
+  <button onclick="generarEnlace()">Generar enlace anónimo</button>
   <div id="resultado"></div>
   <div id="copiar" class="copiar" style="display: none;" onclick="copiarEnlace()">Copiar enlace</div>
 
   <script>
-    function limpiarEnlace() {
+    function generarEnlace() {
       const entrada = document.getElementById('inputLink').value.trim();
+      const tipo = document.getElementById('tipoEnlace').value;
       const resultado = document.getElementById('resultado');
       const copiarBtn = document.getElementById('copiar');
       
@@ -53,42 +60,48 @@
       }
 
       try {
-        // Para enlaces cortos (vm.tiktok.com/xxx)
-        if (entrada.includes('vm.tiktok.com') || entrada.includes('vt.tiktok.com')) {
-          const urlObj = new URL(entrada.startsWith('http') ? entrada : `https://${entrada}`);
-          const path = urlObj.pathname.split('/')[1]; // Extrae "ZMBpHSeFr" de "/ZMBpHSeFr/"
-          const enlaceLimpio = `https://www.tiktok.com/t/${path}/`;
-          mostrarResultado(enlaceLimpio);
+        let videoId = extraerVideoId(entrada);
+        
+        if (!videoId) {
+          resultado.textContent = 'No se pudo extraer el ID del video. Verifica que el enlace sea válido.';
           return;
         }
         
-        // Para enlaces largos (tiktok.com/@usuario/video/123)
-        if (entrada.includes('tiktok.com') && entrada.includes('/video/')) {
-          const urlObj = new URL(entrada);
-          const pathParts = urlObj.pathname.split('/');
-          const videoIndex = pathParts.indexOf('video');
-          if (videoIndex !== -1 && pathParts.length > videoIndex + 1) {
-            const videoId = pathParts[videoIndex + 1];
-            const enlaceLimpio = `https://www.tiktok.com/t/${videoId}/`;
-            mostrarResultado(enlaceLimpio);
-            return;
-          }
+        let enlaceAnonimo;
+        switch(tipo) {
+          case 'vxtiktok':
+            enlaceAnonimo = `https://vxtiktok.com/${videoId}`;
+            break;
+          case 'snaptik':
+            enlaceAnonimo = `https://snaptik.app/video.php?url=${videoId}`;
+            break;
+          case 'ddinstagram':
+            enlaceAnonimo = `https://www.ddinstagram.com/v/${videoId}`;
+            break;
+          default:
+            enlaceAnonimo = `https://www.tiktok.com/t/${videoId}/`;
         }
         
-        resultado.textContent = 'Formato de enlace no reconocido. Usa enlaces como: vm.tiktok.com/xxx o tiktok.com/@usuario/video/123';
+        resultado.innerHTML = `Enlace anónimo: <a href="${enlaceAnonimo}" target="_blank">${enlaceAnonimo}</a>`;
+        copiarBtn.style.display = 'block';
+        copiarBtn.setAttribute('data-url', enlaceAnonimo);
       } catch (error) {
-        resultado.textContent = 'Error al procesar el enlace. Verifica que sea válido.';
+        resultado.textContent = 'Error al generar el enlace. Intenta con otro enlace.';
         console.error(error);
       }
     }
 
-    function mostrarResultado(enlace) {
-      const resultado = document.getElementById('resultado');
-      const copiarBtn = document.getElementById('copiar');
+    function extraerVideoId(url) {
+      // Para enlaces cortos
+      if (url.includes('vm.tiktok.com') || url.includes('vt.tiktok.com')) {
+        const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
+        return urlObj.pathname.split('/')[1];
+      }
       
-      resultado.innerHTML = `Enlace limpio: <a href="${enlace}" target="_blank">${enlace}</a>`;
-      copiarBtn.style.display = 'block';
-      copiarBtn.setAttribute('data-url', enlace);
+      // Para enlaces largos
+      const regexVideoId = /video\/(\d+)|t\/([^\/]+)/;
+      const match = url.match(regexVideoId);
+      return match ? (match[1] || match[2]) : null;
     }
 
     function copiarEnlace() {
