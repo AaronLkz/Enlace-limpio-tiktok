@@ -1,124 +1,112 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Limpiador de Enlaces TikTok</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 2rem auto;
-      padding: 1rem;
-    }
-    input, button {
-      width: 100%;
-      padding: 0.75rem;
-      margin-top: 1rem;
-      font-size: 1rem;
-    }
-    #resultado {
-      margin-top: 1.5rem;
-      font-weight: bold;
-      word-wrap: break-word;
-    }
-    .copiar {
-      margin-top: 1rem;
-      padding: 0.5rem;
-      cursor: pointer;
-      background-color: #f0f0f0;
-      border: 1px solid #ddd;
-      text-align: center;
-    }
-    #loading {
-      display: none;
-      margin-top: 1rem;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpia Enlaces TikTok</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            color: #ff0050; /* Color de TikTok */
+        }
+        .container {
+            background-color: #f8f8f8;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #ff0050;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #e00046;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8f4f8;
+            border-radius: 5px;
+            word-break: break-all;
+            display: none;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
-  <h2>Limpiador Profesional de TikTok</h2>
-  <input type="text" id="inputLink" placeholder="Pega aquí cualquier enlace de TikTok">
-  <button onclick="limpiarEnlace()">Limpiar enlace</button>
-  <div id="loading">Procesando...</div>
-  <div id="resultado"></div>
-  <div id="copiar" class="copiar" style="display: none;" onclick="copiarEnlace()">Copiar enlace</div>
-
-  <script>
-    async function limpiarEnlace() {
-      const entrada = document.getElementById('inputLink').value.trim();
-      const resultado = document.getElementById('resultado');
-      const copiarBtn = document.getElementById('copiar');
-      const loading = document.getElementById('loading');
-      
-      resultado.textContent = '';
-      copiarBtn.style.display = 'none';
-      loading.style.display = 'block';
-
-      if (!entrada) {
-        loading.style.display = 'none';
-        resultado.textContent = 'Por favor ingresa un enlace.';
-        return;
-      }
-
-      try {
-        // Usamos un proxy CORS para evitar problemas
-        const proxyUrl = 'https://api.allorigins.win/get?url=';
-        const encodedUrl = encodeURIComponent(entrada);
+    <div class="container">
+        <h1>Limpia Enlaces TikTok</h1>
+        <p>Elimina los parámetros de seguimiento de tus enlaces de TikTok</p>
         
-        const response = await fetch(`${proxyUrl}${encodedUrl}`, {
-          method: 'GET',
-          redirect: 'manual' // No seguimos redirecciones automáticamente
-        });
+        <input type="text" id="tiktokUrl" placeholder="Pega el enlace de TikTok aquí">
+        <button onclick="cleanUrl()">Limpiar Enlace</button>
         
-        // Obtenemos la URL final de las cabeceras
-        let urlFinal = entrada;
-        if (response.redirected) {
-          urlFinal = response.url;
-        } else {
-          // Alternativa para cuando el proxy no devuelve la redirección
-          const data = await response.json();
-          if (data.contents) {
-            const parser = new DOMParser();
-            const html = parser.parseFromString(data.contents, "text/html");
-            const canonical = html.querySelector('link[rel="canonical"]');
-            if (canonical) {
-              urlFinal = canonical.href;
+        <div id="result"></div>
+        <p class="error" id="error"></p>
+    </div>
+
+    <script>
+        function cleanUrl() {
+            const urlInput = document.getElementById('tiktokUrl').value.trim();
+            const resultDiv = document.getElementById('result');
+            const errorDiv = document.getElementById('error');
+            
+            // Reset
+            resultDiv.style.display = 'none';
+            errorDiv.textContent = '';
+            
+            if (!urlInput) {
+                errorDiv.textContent = 'Por favor, introduce un enlace de TikTok';
+                return;
             }
-          }
+
+            try {
+                // Crear un objeto URL para analizar el enlace
+                const urlObj = new URL(urlInput);
+                
+                // Construir el nuevo URL sin parámetros
+                const cleanUrl = `${urlObj.origin}${urlObj.pathname}`;
+                
+                // Mostrar resultado
+                resultDiv.innerHTML = `
+                    <strong>Enlace limpio:</strong><br>
+                    <a href="${cleanUrl}" target="_blank">${cleanUrl}</a><br><br>
+                    <button onclick="copyToClipboard('${cleanUrl}')">Copiar enlace</button>
+                `;
+                resultDiv.style.display = 'block';
+            } catch (e) {
+                errorDiv.textContent = 'Error: El enlace proporcionado no es válido';
+                console.error(e);
+            }
         }
         
-        // Limpiamos parámetros de tracking
-        const urlObj = new URL(urlFinal);
-        urlObj.search = '';
-        urlObj.hash = '';
-        
-        const urlLimpia = urlObj.toString();
-        
-        resultado.innerHTML = `Enlace limpio: <a href="${urlLimpia}" target="_blank">${urlLimpia}</a>`;
-        copiarBtn.style.display = 'block';
-        copiarBtn.setAttribute('data-url', urlLimpia);
-        
-      } catch (error) {
-        resultado.textContent = 'Error al procesar el enlace. Intenta con otro enlace.';
-        console.error(error);
-      } finally {
-        loading.style.display = 'none';
-      }
-    }
-
-    function copiarEnlace() {
-      const copiarBtn = document.getElementById('copiar');
-      const url = copiarBtn.getAttribute('data-url');
-      
-      navigator.clipboard.writeText(url).then(() => {
-        copiarBtn.textContent = '¡Copiado!';
-        setTimeout(() => {
-          copiarBtn.textContent = 'Copiar enlace';
-        }, 2000);
-      }).catch(err => {
-        console.error('Error al copiar:', err);
-      });
-    }
-  </script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text)
+                .then(() => alert('Enlace copiado al portapapeles!'))
+                .catch(err => console.error('Error al copiar: ', err));
+        }
+    </script>
 </body>
 </html>
