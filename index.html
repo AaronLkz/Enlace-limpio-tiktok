@@ -21,6 +21,14 @@
       font-weight: bold;
       word-wrap: break-word;
     }
+    .copiar {
+      margin-top: 1rem;
+      padding: 0.5rem;
+      cursor: pointer;
+      background-color: #f0f0f0;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -28,16 +36,30 @@
   <input type="text" id="inputLink" placeholder="Pega aquí el enlace de TikTok">
   <button onclick="limpiarEnlace()">Limpiar enlace</button>
   <div id="resultado"></div>
+  <div id="copiar" class="copiar" style="display: none;" onclick="copiarEnlace()">Copiar enlace</div>
 
   <script>
     async function expandirUrl(url) {
       try {
-        const response = await fetch(url, {
-          method: 'HEAD',
+        // Usamos un proxy CORS para evitar problemas
+        const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+        const response = await fetch(proxyUrl + url, {
+          method: 'GET',
           redirect: 'follow',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
         });
-        return response.url;
+        
+        if (response.redirected) {
+          return response.url;
+        }
+        
+        // Si no hay redirección, intentamos obtener la URL final
+        const finalUrl = response.url || url;
+        return finalUrl;
       } catch (error) {
+        console.error('Error al expandir URL:', error);
         return null;
       }
     }
@@ -45,10 +67,23 @@
     function limpiarQuery(url) {
       try {
         const u = new URL(url);
-        u.search = ''; // Quita ?_t= y otras claves
-        u.hash = '';   // Por si tiene #
+        
+        // Extraemos el ID del video que está en la ruta
+        const pathParts = u.pathname.split('/');
+        const videoIndex = pathParts.indexOf('video');
+        
+        if (videoIndex !== -1 && pathParts.length > videoIndex + 1) {
+          const videoId = pathParts[videoIndex + 1];
+          // Construimos la URL limpia
+          return `https://www.tiktok.com/t/${videoId}/`;
+        }
+        
+        // Si no encontramos el formato esperado, devolvemos la URL sin parámetros
+        u.search = '';
+        u.hash = '';
         return u.toString();
       } catch (e) {
+        console.error('Error al limpiar URL:', e);
         return null;
       }
     }
@@ -56,32 +91,56 @@
     async function limpiarEnlace() {
       const entrada = document.getElementById('inputLink').value.trim();
       const resultado = document.getElementById('resultado');
+      const copiarBtn = document.getElementById('copiar');
+      
       resultado.textContent = 'Procesando...';
+      copiarBtn.style.display = 'none';
 
       if (!entrada) {
         resultado.textContent = 'Por favor ingresa un enlace.';
         return;
       }
 
-      let finalUrl = entrada;
+      try {
+        let finalUrl = entrada;
 
-      // Si es un enlace corto tipo vm.tiktok.com
-      if (entrada.includes('vm.tiktok.com')) {
-        const expandido = await expandirUrl(entrada);
-        if (!expandido) {
-          resultado.textContent = 'No se pudo expandir el enlace corto.';
+        // Si es un enlace corto (vm.tiktok.com o tiktok.com)
+        if (entrada.includes('vm.tiktok.com') || entrada.includes('tiktok.com/') || entrada.includes('vt.tiktok.com')) {
+          const expandido = await expandirUrl(entrada);
+          if (!expandido) {
+            resultado.textContent = 'No se pudo expandir el enlace corto.';
+            return;
+          }
+          finalUrl = expandido;
+        }
+
+        const limpio = limpiarQuery(finalUrl);
+        if (!limpio) {
+          resultado.textContent = 'Error al procesar el enlace. Verifica que sea un enlace de TikTok válido.';
           return;
         }
-        finalUrl = expandido;
-      }
 
-      const limpio = limpiarQuery(finalUrl);
-      if (!limpio) {
-        resultado.textContent = 'Error al procesar el enlace.';
-        return;
+        resultado.innerHTML = `Enlace limpio: <a href="${limpio}" target="_blank">${limpio}</a>`;
+        copiarBtn.style.display = 'block';
+        copiarBtn.setAttribute('data-url', limpio);
+      } catch (error) {
+        resultado.textContent = 'Ocurrió un error inesperado. Intenta de nuevo.';
+        console.error(error);
       }
+    }
 
-      resultado.innerHTML = `Enlace limpio: <a href="${limpio}" target="_blank">${limpio}</a>`;
+    function copiarEnlace() {
+      const copiarBtn = document.getElementById('copiar');
+      const url = copiarBtn.getAttribute('data-url');
+      
+      navigator.clipboard.writeText(url).then(() => {
+        copiarBtn.textContent = '¡Copiado!';
+        setTimeout(() => {
+          copiarBtn.textContent = 'Copiar enlace';
+        }, 2000);
+      }).catch(err => {
+        console.error('Error al copiar:', err);
+      });
     }
   </script>
 </body>
