@@ -2,74 +2,86 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Limpiar enlace TikTok</title>
+  <title>Limpiar enlace de TikTok</title>
   <style>
     body {
-      font-family: sans-serif;
-      padding: 2em;
-      background: #f3f3f3;
-      text-align: center;
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 1rem;
     }
     input, button {
-      padding: 0.5em;
-      font-size: 1em;
-      margin: 1em;
-      width: 90%;
-      max-width: 500px;
+      width: 100%;
+      padding: 0.75rem;
+      margin-top: 1rem;
+      font-size: 1rem;
     }
-    #output {
-      margin-top: 1em;
-      word-break: break-all;
-      background: #fff;
-      padding: 1em;
-      border-radius: 8px;
-      box-shadow: 0 0 10px #ccc;
+    #resultado {
+      margin-top: 1.5rem;
+      font-weight: bold;
+      word-wrap: break-word;
     }
   </style>
 </head>
 <body>
-  <h2>Limpiar enlaces de TikTok</h2>
-  <input type="text" id="inputLink" placeholder="Pega aquí tu enlace de TikTok">
-  <br>
-  <button onclick="limpiar()">Limpiar enlace</button>
-  <div id="output"></div>
+  <h2>Limpiador de Enlaces TikTok</h2>
+  <input type="text" id="inputLink" placeholder="Pega aquí el enlace de TikTok">
+  <button onclick="limpiarEnlace()">Limpiar enlace</button>
+  <div id="resultado"></div>
 
   <script>
-    async function limpiar() {
-      const url = document.getElementById('inputLink').value.trim();
-      if (!url.includes("tiktok.com")) {
-        document.getElementById('output').innerText = "No parece un enlace de TikTok válido.";
+    async function expandirUrl(url) {
+      try {
+        const response = await fetch(url, {
+          method: 'HEAD',
+          redirect: 'follow',
+        });
+        return response.url;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function limpiarQuery(url) {
+      try {
+        const u = new URL(url);
+        u.search = ''; // Quita ?_t= y otras claves
+        u.hash = '';   // Por si tiene #
+        return u.toString();
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function limpiarEnlace() {
+      const entrada = document.getElementById('inputLink').value.trim();
+      const resultado = document.getElementById('resultado');
+      resultado.textContent = 'Procesando...';
+
+      if (!entrada) {
+        resultado.textContent = 'Por favor ingresa un enlace.';
         return;
       }
 
-      let finalUrl = url;
+      let finalUrl = entrada;
 
-      // Si es un enlace tipo "vm.tiktok.com", hay que resolver el redireccionamiento
-      if (url.includes("vm.tiktok.com")) {
-        try {
-          const response = await fetch(url, { method: "HEAD", redirect: "follow" });
-          finalUrl = response.url;
-        } catch (err) {
-          document.getElementById('output').innerText = "Error al procesar el enlace acortado.";
+      // Si es un enlace corto tipo vm.tiktok.com
+      if (entrada.includes('vm.tiktok.com')) {
+        const expandido = await expandirUrl(entrada);
+        if (!expandido) {
+          resultado.textContent = 'No se pudo expandir el enlace corto.';
           return;
         }
+        finalUrl = expandido;
       }
 
-      // Limpiar parámetros de seguimiento
-      const cleanLink = finalUrl.split("?")[0];
-
-      // Mostrar y copiar
-      document.getElementById('output').innerHTML = `
-        <strong>Enlace limpio:</strong><br>
-        <a href="${cleanLink}" target="_blank">${cleanLink}</a>
-      `;
-
-      // Copiar automáticamente al portapapeles
-      try {
-        await navigator.clipboard.writeText(cleanLink);
-      } catch (e) {
-        console.log("No se pudo copiar al portapapeles.");
+      const limpio = limpiarQuery(finalUrl);
+      if (!limpio) {
+        resultado.textContent = 'Error al procesar el enlace.';
+        return;
       }
+
+      resultado.innerHTML = `Enlace limpio: <a href="${limpio}" target="_blank">${limpio}</a>`;
     }
   </script>
 </body>
