@@ -10,7 +10,7 @@
       margin: 2rem auto;
       padding: 1rem;
     }
-    input, button, select {
+    input, button {
       width: 100%;
       padding: 0.75rem;
       margin-top: 1rem;
@@ -29,87 +29,94 @@
       border: 1px solid #ddd;
       text-align: center;
     }
+    #loading {
+      display: none;
+      margin-top: 1rem;
+    }
   </style>
 </head>
 <body>
-  <h2>Limpiador de TikTok Funcional</h2>
-  <input type="text" id="inputLink" placeholder="Pega cualquier enlace de TikTok">
-  <select id="modo">
-    <option value="limpio">Enlace limpio (sin rastreo)</option>
-    <option value="anonimo">Enlace anónimo (vxtiktok)</option>
-  </select>
-  <button onclick="procesarEnlace()">Generar enlace</button>
+  <h2>Limpiador Profesional de TikTok</h2>
+  <input type="text" id="inputLink" placeholder="Pega aquí cualquier enlace de TikTok">
+  <button onclick="limpiarEnlace()">Limpiar enlace</button>
+  <div id="loading">Procesando...</div>
   <div id="resultado"></div>
   <div id="copiar" class="copiar" style="display: none;" onclick="copiarEnlace()">Copiar enlace</div>
 
   <script>
-    function procesarEnlace() {
+    async function limpiarEnlace() {
       const entrada = document.getElementById('inputLink').value.trim();
-      const modo = document.getElementById('modo').value;
       const resultado = document.getElementById('resultado');
       const copiarBtn = document.getElementById('copiar');
+      const loading = document.getElementById('loading');
       
-      resultado.textContent = 'Procesando...';
+      resultado.textContent = '';
       copiarBtn.style.display = 'none';
+      loading.style.display = 'block';
 
       if (!entrada) {
+        loading.style.display = 'none';
         resultado.textContent = 'Por favor ingresa un enlace.';
         return;
       }
 
       try {
-        const videoId = extraerVideoId(entrada);
-        if (!videoId) throw new Error('Formato no reconocido');
-
-        let enlaceFinal;
-        if (modo === 'anonimo') {
-          enlaceFinal = `https://vxtiktok.com/${videoId}`; // Servicio externo
+        // Usamos un proxy CORS para evitar problemas
+        const proxyUrl = 'https://api.allorigins.win/get?url=';
+        const encodedUrl = encodeURIComponent(entrada);
+        
+        const response = await fetch(`${proxyUrl}${encodedUrl}`, {
+          method: 'GET',
+          redirect: 'manual' // No seguimos redirecciones automáticamente
+        });
+        
+        // Obtenemos la URL final de las cabeceras
+        let urlFinal = entrada;
+        if (response.redirected) {
+          urlFinal = response.url;
         } else {
-          // Formato funcional comprobado (octubre 2023)
-          enlaceFinal = `https://www.tiktok.com/@tiktok/video/${videoId}`;
+          // Alternativa para cuando el proxy no devuelve la redirección
+          const data = await response.json();
+          if (data.contents) {
+            const parser = new DOMParser();
+            const html = parser.parseFromString(data.contents, "text/html");
+            const canonical = html.querySelector('link[rel="canonical"]');
+            if (canonical) {
+              urlFinal = canonical.href;
+            }
+          }
         }
         
-        verificarEnlace(enlaceFinal).then(esValido => {
-          if (esValido) {
-            resultado.innerHTML = `Enlace generado: <a href="${enlaceFinal}" target="_blank">${enlaceFinal}</a>`;
-            copiarBtn.style.display = 'block';
-            copiarBtn.setAttribute('data-url', enlaceFinal);
-          } else {
-            resultado.textContent = 'Error: El enlace no es válido. TikTok puede haber bloqueado este método.';
-          }
-        });
+        // Limpiamos parámetros de tracking
+        const urlObj = new URL(urlFinal);
+        urlObj.search = '';
+        urlObj.hash = '';
+        
+        const urlLimpia = urlObj.toString();
+        
+        resultado.innerHTML = `Enlace limpio: <a href="${urlLimpia}" target="_blank">${urlLimpia}</a>`;
+        copiarBtn.style.display = 'block';
+        copiarBtn.setAttribute('data-url', urlLimpia);
+        
       } catch (error) {
-        resultado.textContent = `Error: ${error.message}`;
+        resultado.textContent = 'Error al procesar el enlace. Intenta con otro enlace.';
+        console.error(error);
+      } finally {
+        loading.style.display = 'none';
       }
-    }
-
-    async function verificarEnlace(url) {
-      try {
-        const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, {
-          method: 'HEAD'
-        });
-        return res.status < 400;
-      } catch {
-        return true; // Si falla la verificación, asumimos que es válido
-      }
-    }
-
-    function extraerVideoId(url) {
-      // Para enlaces acortados
-      if (url.includes('vm.tiktok.com') || url.includes('vt.tiktok.com')) {
-        const path = new URL(url.startsWith('http') ? url : `https://${url}`).pathname;
-        return path.split('/')[1];
-      }
-      
-      // Para enlaces normales (nuevo formato)
-      const match = url.match(/\/(video|@[\w.]+)\/(\d+)/);
-      return match ? match[2] : null;
     }
 
     function copiarEnlace() {
-      const url = document.getElementById('copiar').getAttribute('data-url');
+      const copiarBtn = document.getElementById('copiar');
+      const url = copiarBtn.getAttribute('data-url');
+      
       navigator.clipboard.writeText(url).then(() => {
-        alert('Enlace copiado al portapapeles');
+        copiarBtn.textContent = '¡Copiado!';
+        setTimeout(() => {
+          copiarBtn.textContent = 'Copiar enlace';
+        }, 2000);
+      }).catch(err => {
+        console.error('Error al copiar:', err);
       });
     }
   </script>
