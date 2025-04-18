@@ -11,47 +11,76 @@
             margin: 0 auto;
             padding: 20px;
             text-align: center;
+            background-color: #f0f2f5;
         }
         h1 {
-            color: #ff0050; /* Color de TikTok */
+            color: #ff0050;
+            margin-bottom: 10px;
         }
         .container {
-            background-color: #f8f8f8;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background-color: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         input {
             width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            padding: 12px;
+            margin: 15px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
             box-sizing: border-box;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+        input:focus {
+            border-color: #ff0050;
+            outline: none;
         }
         button {
             background-color: #ff0050;
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
+            padding: 12px 24px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            margin: 5px;
         }
         button:hover {
             background-color: #e00046;
         }
+        button.secondary {
+            background-color: #25a3f0;
+        }
+        button.secondary:hover {
+            background-color: #1d8bcb;
+        }
         #result {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #e8f4f8;
-            border-radius: 5px;
+            margin-top: 25px;
+            padding: 20px;
+            background-color: #f8fafc;
+            border-radius: 8px;
             word-break: break-all;
             display: none;
+            border-left: 4px solid #ff0050;
         }
         .error {
-            color: red;
-            margin-top: 10px;
+            color: #ff3333;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        .loading {
+            display: none;
+            margin: 15px 0;
+            color: #666;
+        }
+        .credits {
+            margin-top: 30px;
+            font-size: 14px;
+            color: #666;
         }
     </style>
 </head>
@@ -60,22 +89,29 @@
         <h1>Limpia Enlaces TikTok</h1>
         <p>Elimina los parámetros de seguimiento de tus enlaces de TikTok</p>
         
-        <input type="text" id="tiktokUrl" placeholder="Pega el enlace de TikTok aquí">
+        <input type="text" id="tiktokUrl" placeholder="Ej: https://vm.tiktok.com/ZM6YQYQYQ/">
         <button onclick="cleanUrl()">Limpiar Enlace</button>
         
+        <div class="loading" id="loading">Procesando enlace...</div>
         <div id="result"></div>
         <p class="error" id="error"></p>
+        
+        <div class="credits">
+            Herramienta para limpiar enlaces de TikTok - Sin rastreo
+        </div>
     </div>
 
     <script>
-        function cleanUrl() {
+        async function cleanUrl() {
             const urlInput = document.getElementById('tiktokUrl').value.trim();
             const resultDiv = document.getElementById('result');
             const errorDiv = document.getElementById('error');
+            const loadingDiv = document.getElementById('loading');
             
             // Reset
             resultDiv.style.display = 'none';
             errorDiv.textContent = '';
+            loadingDiv.style.display = 'none';
             
             if (!urlInput) {
                 errorDiv.textContent = 'Por favor, introduce un enlace de TikTok';
@@ -83,29 +119,56 @@
             }
 
             try {
-                // Crear un objeto URL para analizar el enlace
-                const urlObj = new URL(urlInput);
+                // Mostrar carga
+                loadingDiv.style.display = 'block';
                 
-                // Construir el nuevo URL sin parámetros
-                const cleanUrl = `${urlObj.origin}${urlObj.pathname}`;
+                // Enviar al servidor PHP
+                const response = await fetch('process.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `url=${encodeURIComponent(urlInput)}`
+                });
                 
-                // Mostrar resultado
-                resultDiv.innerHTML = `
-                    <strong>Enlace limpio:</strong><br>
-                    <a href="${cleanUrl}" target="_blank">${cleanUrl}</a><br><br>
-                    <button onclick="copyToClipboard('${cleanUrl}')">Copiar enlace</button>
-                `;
-                resultDiv.style.display = 'block';
+                const data = await response.json();
+                
+                // Ocultar carga
+                loadingDiv.style.display = 'none';
+                
+                if (data.error) {
+                    errorDiv.textContent = data.error;
+                } else {
+                    resultDiv.innerHTML = `
+                        <strong>Enlace limpio:</strong><br>
+                        <a href="${data.cleanUrl}" target="_blank" style="color: #ff0050; text-decoration: none;">${data.cleanUrl}</a><br><br>
+                        <button onclick="copyToClipboard('${data.cleanUrl}')">Copiar enlace</button>
+                        <button class="secondary" onclick="window.open('${data.cleanUrl}', '_blank')">Abrir enlace</button>
+                    `;
+                    resultDiv.style.display = 'block';
+                }
             } catch (e) {
-                errorDiv.textContent = 'Error: El enlace proporcionado no es válido';
+                loadingDiv.style.display = 'none';
+                errorDiv.textContent = 'Error al conectar con el servidor. Intenta nuevamente.';
                 console.error(e);
             }
         }
         
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text)
-                .then(() => alert('Enlace copiado al portapapeles!'))
-                .catch(err => console.error('Error al copiar: ', err));
+                .then(() => {
+                    const originalText = event.target.textContent;
+                    event.target.textContent = '¡Copiado!';
+                    event.target.style.backgroundColor = '#4CAF50';
+                    setTimeout(() => {
+                        event.target.textContent = originalText;
+                        event.target.style.backgroundColor = '#ff0050';
+                    }, 2000);
+                })
+                .catch(err => {
+                    alert('No se pudo copiar el enlace. Error: ' + err);
+                    console.error('Error al copiar: ', err);
+                });
         }
     </script>
 </body>
