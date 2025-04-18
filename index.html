@@ -1,175 +1,57 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Limpia Enlaces TikTok</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            text-align: center;
-            background-color: #f0f2f5;
-        }
-        h1 {
-            color: #ff0050;
-            margin-bottom: 10px;
-        }
-        .container {
-            background-color: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            margin: 15px 0;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            box-sizing: border-box;
-            font-size: 16px;
-            transition: border 0.3s;
-        }
-        input:focus {
-            border-color: #ff0050;
-            outline: none;
-        }
-        button {
-            background-color: #ff0050;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            transition: background-color 0.3s;
-            margin: 5px;
-        }
-        button:hover {
-            background-color: #e00046;
-        }
-        button.secondary {
-            background-color: #25a3f0;
-        }
-        button.secondary:hover {
-            background-color: #1d8bcb;
-        }
-        #result {
-            margin-top: 25px;
-            padding: 20px;
-            background-color: #f8fafc;
-            border-radius: 8px;
-            word-break: break-all;
-            display: none;
-            border-left: 4px solid #ff0050;
-        }
-        .error {
-            color: #ff3333;
-            margin-top: 15px;
-            font-weight: bold;
-        }
-        .loading {
-            display: none;
-            margin: 15px 0;
-            color: #666;
-        }
-        .credits {
-            margin-top: 30px;
-            font-size: 14px;
-            color: #666;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Enviar Enlace TikTok</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2em;
+      background-color: #f9f9f9;
+    }
+    input, button {
+      padding: 0.5em;
+      margin: 0.5em 0;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Limpia Enlaces TikTok</h1>
-        <p>Elimina los parámetros de seguimiento de tus enlaces de TikTok</p>
-        
-        <input type="text" id="tiktokUrl" placeholder="Ej: https://vm.tiktok.com/ZM6YQYQYQ/">
-        <button onclick="cleanUrl()">Limpiar Enlace</button>
-        
-        <div class="loading" id="loading">Procesando enlace...</div>
-        <div id="result"></div>
-        <p class="error" id="error"></p>
-        
-        <div class="credits">
-            Herramienta para limpiar enlaces de TikTok - Sin rastreo
-        </div>
-    </div>
 
-    <script>
-        async function cleanUrl() {
-            const urlInput = document.getElementById('tiktokUrl').value.trim();
-            const resultDiv = document.getElementById('result');
-            const errorDiv = document.getElementById('error');
-            const loadingDiv = document.getElementById('loading');
-            
-            // Reset
-            resultDiv.style.display = 'none';
-            errorDiv.textContent = '';
-            loadingDiv.style.display = 'none';
-            
-            if (!urlInput) {
-                errorDiv.textContent = 'Por favor, introduce un enlace de TikTok';
-                return;
-            }
+  <h1>Enviar Enlace de TikTok</h1>
+  <input type="text" id="tiktokLink" placeholder="Pega tu enlace de TikTok">
+  <button onclick="enviarLink()">Enviar</button>
 
-            try {
-                // Mostrar carga
-                loadingDiv.style.display = 'block';
-                
-                // Enviar al servidor PHP
-                const response = await fetch('process.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `url=${encodeURIComponent(urlInput)}`
-                });
-                
-                const data = await response.json();
-                
-                // Ocultar carga
-                loadingDiv.style.display = 'none';
-                
-                if (data.error) {
-                    errorDiv.textContent = data.error;
-                } else {
-                    resultDiv.innerHTML = `
-                        <strong>Enlace limpio:</strong><br>
-                        <a href="${data.cleanUrl}" target="_blank" style="color: #ff0050; text-decoration: none;">${data.cleanUrl}</a><br><br>
-                        <button onclick="copyToClipboard('${data.cleanUrl}')">Copiar enlace</button>
-                        <button class="secondary" onclick="window.open('${data.cleanUrl}', '_blank')">Abrir enlace</button>
-                    `;
-                    resultDiv.style.display = 'block';
-                }
-            } catch (e) {
-                loadingDiv.style.display = 'none';
-                errorDiv.textContent = 'Error al conectar con el servidor. Intenta nuevamente.';
-                console.error(e);
-            }
+  <div id="respuesta"></div>
+
+  <script>
+    async function enviarLink() {
+      const link = document.getElementById('tiktokLink').value;
+      const respuestaDiv = document.getElementById('respuesta');
+
+      try {
+        const res = await fetch('http://clearlinkttk.free.nf/process.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ link })
+        });
+
+        const data = await res.json();
+
+        if (data.error) {
+          respuestaDiv.textContent = 'Error: ' + data.error;
+        } else {
+          respuestaDiv.innerHTML = `
+            <p>${data.mensaje}</p>
+            <p>Enlace enviado: <a href="${data.link_original}" target="_blank">${data.link_original}</a></p>
+          `;
         }
-        
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text)
-                .then(() => {
-                    const originalText = event.target.textContent;
-                    event.target.textContent = '¡Copiado!';
-                    event.target.style.backgroundColor = '#4CAF50';
-                    setTimeout(() => {
-                        event.target.textContent = originalText;
-                        event.target.style.backgroundColor = '#ff0050';
-                    }, 2000);
-                })
-                .catch(err => {
-                    alert('No se pudo copiar el enlace. Error: ' + err);
-                    console.error('Error al copiar: ', err);
-                });
-        }
-    </script>
+      } catch (error) {
+        respuestaDiv.textContent = 'Error al conectar con el servidor: ' + error.message;
+      }
+    }
+  </script>
+
 </body>
 </html>
